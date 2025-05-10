@@ -22,6 +22,7 @@ import {
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 import Chatbot from "@/components/chatbot"
+import { Analytics } from "@vercel/analytics/next"
 
 export default function DashboardPage() {
   const [currentWeather, setCurrentWeather] = useState({

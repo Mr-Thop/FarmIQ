@@ -11,6 +11,7 @@ import Image from "next/image"
 import HomeSlideshow from "@/components/home-slideshow"
 import Navbar from "@/components/navbar"
 import LoginRequiredModal from "@/components/login-required-modal"
+import { Analytics } from "@vercel/analytics/next"
 
 
 export default function Home() {
@@ -433,6 +434,7 @@ export default function Home() {
         onClose={() => setShowLoginModal(false)}
         message="You need to login to get started. Would you like to login now?"
       />
+      <Analytics/>
 
     </div>
   )
