@@ -26,6 +26,7 @@ import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 import Chatbot from "@/components/chatbot"
 import { useCart } from "@/context/cart-context"
+import { Analytics } from "@vercel/analytics/next"
 
 // Sample farm data
 const farms = [
@@ -225,6 +226,7 @@ export default function FarmProfilePage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
       <Navbar />
+      <Analytics/>
 
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="container mx-auto max-w-6xl">

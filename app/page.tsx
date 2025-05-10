@@ -58,6 +58,7 @@ export default function Home() {
 
   return (
     <div className="relative overflow-hidden">
+      <Analytics/>
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden -z-10">
         <motion.div
@@ -434,7 +435,6 @@ export default function Home() {
         onClose={() => setShowLoginModal(false)}
         message="You need to login to get started. Would you like to login now?"
       />
-      <Analytics/>
 
     </div>
   )

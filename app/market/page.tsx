@@ -18,6 +18,7 @@ import { useCart } from "@/context/cart-context"
 import { useAuth } from "@/context/auth-context"
 import LoginRequiredModal from "@/components/login-required-modal"
 import { motion } from "framer-motion"
+import { Analytics } from "@vercel/analytics/next"
 
 // Sample product data
 const products = [
@@ -293,6 +294,7 @@ export default function MarketPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
       <Navbar />
+      <Analytics/>
 
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="container mx-auto max-w-7xl">

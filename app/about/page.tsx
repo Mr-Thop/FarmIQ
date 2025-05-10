@@ -4,11 +4,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Leaf, Users, Award, Globe, MessageSquare, ShieldCheck } from "lucide-react"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
+import { Analytics } from "@vercel/analytics/next"
 
 export default function AboutPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
       <Navbar />
+      <Analytics/>
 
       <main className="flex-1">
         {/* Hero Section */}

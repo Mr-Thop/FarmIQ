@@ -16,6 +16,8 @@ import Chatbot from "@/components/chatbot"
 import { motion } from "framer-motion"
 import { useAuth } from "@/context/auth-context"
 import LoginRequiredModal from "@/components/login-required-modal"
+import { Analytics } from "@vercel/analytics/next"
+
 
 export default function SettingsPage() {
   const { isAuthenticated } = useAuth()
@@ -40,6 +42,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
       <Navbar />
+      <Analytics/>
 
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
