@@ -284,6 +284,215 @@ def delete_farm(farm_id):
         con.close()
 
 
+# Upload and analyze leaf image
+@app.route("/api/leaf-analysis", methods=["POST"])
+@token_required
+def upload_leaf_analysis():
+    data = request.get_json()
+    user_id = request.user["user_id"]
+    image_url = data.get("image_url")
+    plant = data.get("plant")
+    disease = data.get("disease")
+    confidence = data.get("confidence")
+    severity = data.get("severity")
+    treatments = data.get("treatments")
+
+    try:
+        conn_, cursor = conn()
+        query = """
+            INSERT INTO leaf_analysis (user_id, image_url, plant, disease, confidence, severity, treatments)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (user_id, image_url, plant, disease, confidence, severity, treatments))
+        conn_.commit()
+        return jsonify({"message": "Leaf analysis saved"}), 201
+    except Exception as e:
+        print("Leaf Analysis Error:", e)
+        return jsonify({"error": "Failed to save leaf analysis"}), 500
+    finally:
+        cursor.close()
+        conn_.close()
+
+# Get user’s leaf analysis history
+@app.route("/api/leaf-analysis/history", methods=["GET"])
+@token_required
+def get_leaf_analysis_history():
+    user_id = request.user["user_id"]
+    try:
+        conn_, cursor = conn()
+        cursor.execute("SELECT * FROM leaf_analysis WHERE user_id = %s", (user_id,))
+        rows = cursor.fetchall()
+        result = [{
+            "id": row[0],
+            "image_url": row[2],
+            "plant": row[3],
+            "disease": row[4],
+            "confidence": row[5],
+            "severity": row[6],
+            "treatments": row[7],
+            "created_at": str(row[8])
+        } for row in rows]
+        return jsonify({"history": result}), 200
+    except Exception as e:
+        print("Leaf Analysis History Error:", e)
+        return jsonify({"error": "Failed to retrieve history"}), 500
+    finally:
+        cursor.close()
+        conn_.close()
+
+# Get specific analysis by ID
+@app.route("/api/leaf-analysis/<int:analysis_id>", methods=["GET"])
+@token_required
+def get_leaf_analysis_by_id(analysis_id):
+    user_id = request.user["user_id"]
+    try:
+        conn_, cursor = conn()
+        cursor.execute("SELECT * FROM leaf_analysis WHERE id = %s AND user_id = %s", (analysis_id, user_id))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"error": "Analysis not found"}), 404
+        result = {
+            "id": row[0],
+            "image_url": row[2],
+            "plant": row[3],
+            "disease": row[4],
+            "confidence": row[5],
+            "severity": row[6],
+            "treatments": row[7],
+            "created_at": str(row[8])
+        }
+        return jsonify({"analysis": result}), 200
+    except Exception as e:
+        print("Leaf Analysis Detail Error:", e)
+        return jsonify({"error": "Failed to retrieve analysis"}), 500
+    finally:
+        cursor.close()
+        conn_.close()
+
+# Static plant disease data
+@app.route("/api/diseases", methods=["GET"])
+def get_diseases():
+    diseases = [
+        {"plant": "Tomato", "disease": "Early Blight", "treatment": "Remove infected leaves, use copper fungicide"},
+        {"plant": "Wheat", "disease": "Rust", "treatment": "Apply fungicides early"},
+        {"plant": "Rice", "disease": "Leaf Blast", "treatment": "Improve drainage, spray fungicide"},
+    ]
+    return jsonify({"diseases": diseases}), 200
+
+
+# Get reviews for a farm
+@app.route("/api/farms/<int:farm_id>/reviews", methods=["GET"])
+def get_farm_reviews(farm_id):
+    try:
+        conn_, cursor = conn()
+        cursor.execute("SELECT * FROM farm_reviews WHERE farm_id = %s", (farm_id,))
+        rows = cursor.fetchall()
+        reviews = [{
+            "id": row[0],
+            "user_id": row[2],
+            "rating": row[3],
+            "comment": row[4],
+            "created_at": str(row[5])
+        } for row in rows]
+        return jsonify({"reviews": reviews}), 200
+    except Exception as e:
+        print("Farm Reviews Fetch Error:", e)
+        return jsonify({"error": "Failed to fetch reviews"}), 500
+    finally:
+        cursor.close()
+        conn_.close()
+
+# Add a new review for a farm
+@app.route("/api/farms/<int:farm_id>/reviews", methods=["POST"])
+@token_required
+def add_farm_review(farm_id):
+    data = request.get_json()
+    user_id = request.user["user_id"]
+    rating = data.get("rating")
+    comment = data.get("comment")
+
+    try:
+        conn_, cursor = conn()
+        cursor.execute("""
+            INSERT INTO farm_reviews (farm_id, user_id, rating, comment)
+            VALUES (%s, %s, %s, %s)
+        """, (farm_id, user_id, rating, comment))
+        conn_.commit()
+        return jsonify({"message": "Review added"}), 201
+    except Exception as e:
+        print("Add Review Error:", e)
+        return jsonify({"error": "Failed to add review"}), 500
+    finally:
+        cursor.close()
+        conn_.close()
+
+
+# Get saved items
+@app.route("/api/saved-items", methods=["GET"])
+@token_required
+def get_saved_items():
+    user_id = request.user["user_id"]
+    try:
+        conn_, cursor = conn()
+        cursor.execute("SELECT * FROM saved_items WHERE user_id = %s", (user_id,))
+        rows = cursor.fetchall()
+        saved = [{
+            "id": row[0],
+            "item_type": row[2],
+            "item_id": row[3],
+            "created_at": str(row[4])
+        } for row in rows]
+        return jsonify({"saved_items": saved}), 200
+    except Exception as e:
+        print("Saved Items Error:", e)
+        return jsonify({"error": "Failed to fetch saved items"}), 500
+    finally:
+        cursor.close()
+        conn_.close()
+
+# Save an item
+@app.route("/api/saved-items", methods=["POST"])
+@token_required
+def save_item():
+    data = request.get_json()
+    user_id = request.user["user_id"]
+    item_type = data.get("item_type")
+    item_id = data.get("item_id")
+
+    try:
+        conn_, cursor = conn()
+        cursor.execute("""
+            INSERT INTO saved_items (user_id, item_type, item_id)
+            VALUES (%s, %s, %s)
+        """, (user_id, item_type, item_id))
+        conn_.commit()
+        return jsonify({"message": "Item saved"}), 201
+    except Exception as e:
+        print("Save Item Error:", e)
+        return jsonify({"error": "Failed to save item"}), 500
+    finally:
+        cursor.close()
+        conn_.close()
+
+# Delete a saved item
+@app.route("/api/saved-items/<int:item_id>", methods=["DELETE"])
+@token_required
+def delete_saved_item(item_id):
+    user_id = request.user["user_id"]
+    try:
+        conn_, cursor = conn()
+        cursor.execute("DELETE FROM saved_items WHERE id = %s AND user_id = %s", (item_id, user_id))
+        conn_.commit()
+        return jsonify({"message": "Saved item removed"}), 200
+    except Exception as e:
+        print("Delete Saved Error:", e)
+        return jsonify({"error": "Failed to remove saved item"}), 500
+    finally:
+        cursor.close()
+        conn_.close()
+
+
+
 # Upload and analyze soil image
 @app.route("/api/soil-analysis", methods=["POST"])
 @token_required
@@ -430,8 +639,8 @@ def weather_alerts():
 
 @app.route("/api/calendar", methods=["GET"])
 @token_required
-def get_calendar(current_user):
-    user_id = current_user["id"]
+def get_calendar():
+    user_id = request.user["user_id"]
     month = request.args.get("month")
     year = request.args.get("year")
 
@@ -466,8 +675,8 @@ def get_calendar(current_user):
 
 @app.route("/api/calendar", methods=["POST"])
 @token_required
-def add_calendar_event(current_user):
-    user_id = current_user["id"]
+def add_calendar_event():
+    user_id = request.user["user_id"]
     data = request.get_json()
 
     title = data.get("title")
@@ -493,8 +702,8 @@ def add_calendar_event(current_user):
 
 @app.route("/api/calendar/<int:event_id>", methods=["PUT"])
 @token_required
-def update_calendar_event(current_user,event_id):
-    user_id = current_user["id"]
+def update_calendar_event(event_id):
+    user_id = request.user["user_id"]
     data = request.get_json()
 
     try:
@@ -516,8 +725,8 @@ def update_calendar_event(current_user,event_id):
 
 @app.route("/api/calendar/<int:event_id>", methods=["DELETE"])
 @token_required
-def delete_calendar_event(current_user,event_id):
-    user_id = current_user["id"]
+def delete_calendar_event(event_id):
+    user_id = request.user["user_id"]
 
     try:
         connection, cursor = conn()
@@ -632,8 +841,8 @@ def get_product_by_id(product_id):
 
 @app.route("/api/products", methods=["POST"])
 @token_required
-def add_product(current_user):
-    user_id = current_user["id"]
+def add_product():
+    user_id = request.user["user_id"]
     data = request.get_json()
 
     try:
@@ -658,8 +867,8 @@ def add_product(current_user):
 
 @app.route("/api/products/<int:product_id>", methods=["PUT"])
 @token_required
-def update_product(current_user,product_id):
-    user_id = current_user["id"]
+def update_product(product_id):
+    user_id = request.user["user_id"]
     data = request.get_json()
 
     try:
@@ -685,8 +894,8 @@ def update_product(current_user,product_id):
 
 @app.route("/api/products/<int:product_id>", methods=["DELETE"])
 @token_required
-def delete_product(current_user,product_id):
-    user_id = current_user["id"]
+def delete_product(product_id):
+    user_id = request.user["user_id"]
 
     try:
         connection, cursor = conn()
@@ -710,8 +919,8 @@ def get_categories():
 
 @app.route("/api/cart", methods=["GET"])
 @token_required
-def get_cart(current_user):
-    user_id = current_user["id"]
+def get_cart():
+    user_id = request.user["user_id"]
     try:
         connection, cursor = conn()
         cursor.execute("""
@@ -744,8 +953,8 @@ def get_cart(current_user):
 
 @app.route("/api/cart", methods=["POST"])
 @token_required
-def add_to_cart(current_user):
-    user_id = current_user["id"]
+def add_to_cart():
+    user_id = request.user["user_id"]
     data = request.get_json()
     product_id = data["productId"]
     quantity = data["quantity"]
@@ -772,8 +981,8 @@ def add_to_cart(current_user):
 
 @app.route("/api/cart/<int:item_id>", methods=["PUT"])
 @token_required
-def update_cart_item(current_user,item_id):
-    user_id = current_user["id"]
+def update_cart_item(item_id):
+    user_id = request.user["user_id"]
     data = request.get_json()
     quantity = data["quantity"]
 
@@ -791,8 +1000,8 @@ def update_cart_item(current_user,item_id):
 
 @app.route("/api/cart/<int:item_id>", methods=["DELETE"])
 @token_required
-def remove_cart_item(current_user,item_id):
-    user_id = current_user["id"]
+def remove_cart_item(item_id):
+    user_id = request.user["user_id"]
 
     try:
         connection, cursor = conn()
@@ -808,8 +1017,8 @@ def remove_cart_item(current_user,item_id):
 
 @app.route("/api/orders", methods=["POST"])
 @token_required
-def create_order(current_user):
-    user_id = current_user["id"]
+def create_order():
+    user_id = request.user["user_id"]
     data = request.get_json()
     shipping = data["shippingAddress"]
     payment = data["paymentMethod"]
@@ -847,8 +1056,8 @@ def create_order(current_user):
 
 @app.route("/api/orders", methods=["GET"])
 @token_required
-def get_orders(current_user):
-    user_id = current_user["id"]
+def get_orders():
+    user_id = request.user["user_id"]
 
     try:
         connection, cursor = conn()
@@ -866,8 +1075,8 @@ def get_orders(current_user):
 
 @app.route("/api/orders/<int:order_id>", methods=["GET"])
 @token_required
-def get_order_by_id(current_user,order_id):
-    user_id = current_user["id"]
+def get_order_by_id(order_id):
+    user_id = request.user["user_id"]
 
     try:
         connection, cursor = conn()
@@ -995,7 +1204,7 @@ def user_activity_report():
 
 @app.route("/api/notifications", methods=["GET"])
 @token_required
-def get_notifications(current_user):
+def get_notifications():
     try:
         read_filter = request.args.get("read")
         page = int(request.args.get("page", 1))
@@ -1004,7 +1213,7 @@ def get_notifications(current_user):
 
         connection, cursor = conn()
         query = "SELECT id, title, message, is_read, created_at FROM notifications WHERE user_id = %s"
-        params = [current_user["id"]]
+        params = [request.user["user_id"]]
 
         if read_filter is not None:
             query += " AND is_read = %s"
@@ -1032,12 +1241,12 @@ def get_notifications(current_user):
 
 @app.route("/api/notifications/<uuid:notification_id>/read", methods=["PUT"])
 @token_required
-def mark_notification_read(current_user, notification_id):
+def mark_notification_read(notification_id):
     try:
         connection, cursor = conn()
         cursor.execute(
             "UPDATE notifications SET is_read = TRUE WHERE id = %s AND user_id = %s",
-            (str(notification_id), current_user["id"])
+            (str(notification_id), request.user["user_id"])
         )
         connection.commit()
 
@@ -1055,12 +1264,12 @@ def mark_notification_read(current_user, notification_id):
 
 @app.route("/api/notifications/read-all", methods=["PUT"])
 @token_required
-def mark_all_notifications_read(current_user):
+def mark_all_notifications_read():
     try:
         connection, cursor = conn()
         cursor.execute(
             "UPDATE notifications SET is_read = TRUE WHERE user_id = %s AND is_read = FALSE",
-            (current_user["id"],)
+            (request.user["user_id"],)
         )
         connection.commit()
 
@@ -1075,12 +1284,12 @@ def mark_all_notifications_read(current_user):
 
 @app.route("/api/chats", methods=["GET"])
 @token_required
-def get_user_chats(current_user):
+def get_user_chats():
     try:
         connection, cursor = conn()
         cursor.execute(
             "SELECT id, created_at FROM chats WHERE user_id = %s ORDER BY created_at DESC",
-            (current_user["id"],)
+            (request.user["user_id"],)
         )
         chats = [{"id": str(row[0]), "created_at": row[1].isoformat()} for row in cursor.fetchall()]
         return jsonify({"chats": chats}), 200
@@ -1094,7 +1303,7 @@ def get_user_chats(current_user):
 
 @app.route("/api/chats", methods=["POST"])
 @token_required
-def start_chat(current_user):
+def start_chat():
     try:
         data = request.get_json()
         message = data.get("message")
@@ -1103,13 +1312,13 @@ def start_chat(current_user):
 
         connection, cursor = conn()
         cursor.execute(
-            "INSERT INTO chats (user_id) VALUES (%s) RETURNING id", (current_user["id"],)
+            "INSERT INTO chats (user_id) VALUES (%s) RETURNING id", (request.user["user_id"],)
         )
         chat_id = cursor.fetchone()[0]
 
         cursor.execute(
             "INSERT INTO chat_messages (chat_id, sender_id, content) VALUES (%s, %s, %s)",
-            (chat_id, current_user["id"], message)
+            (chat_id, request.user["user_id"], message)
         )
         connection.commit()
 
@@ -1124,7 +1333,7 @@ def start_chat(current_user):
 
 @app.route("/api/chats/<uuid:chat_id>/messages", methods=["GET"])
 @token_required
-def get_chat_messages(current_user, chat_id):
+def get_chat_messages(chat_id):
     try:
         page = int(request.args.get("page", 1))
         limit = int(request.args.get("limit", 20))
@@ -1132,7 +1341,7 @@ def get_chat_messages(current_user, chat_id):
 
         connection, cursor = conn()
         cursor.execute(
-            "SELECT id FROM chats WHERE id = %s AND user_id = %s", (str(chat_id), current_user["id"])
+            "SELECT id FROM chats WHERE id = %s AND user_id = %s", (str(chat_id), request.user["user_id"])
         )
         if not cursor.fetchone():
             return jsonify({"error": "Chat not found"}), 404
@@ -1166,7 +1375,7 @@ def get_chat_messages(current_user, chat_id):
 
 @app.route("/api/chats/<uuid:chat_id>/messages", methods=["POST"])
 @token_required
-def send_chat_message(current_user, chat_id):
+def send_chat_message(chat_id):
     try:
         data = request.get_json()
         content = data.get("content")
@@ -1175,14 +1384,14 @@ def send_chat_message(current_user, chat_id):
 
         connection, cursor = conn()
         cursor.execute(
-            "SELECT id FROM chats WHERE id = %s AND user_id = %s", (str(chat_id), current_user["id"])
+            "SELECT id FROM chats WHERE id = %s AND user_id = %s", (str(chat_id), request.user["user_id"])
         )
         if not cursor.fetchone():
             return jsonify({"error": "Chat not found"}), 404
 
         cursor.execute(
             "INSERT INTO chat_messages (chat_id, sender_id, content) VALUES (%s, %s, %s) RETURNING id, created_at",
-            (str(chat_id), current_user["id"], content)
+            (str(chat_id), request.user["user_id"], content)
         )
         msg_id, created_at = cursor.fetchone()
         connection.commit()
@@ -1191,7 +1400,7 @@ def send_chat_message(current_user, chat_id):
             "message": {
                 "id": str(msg_id),
                 "chat_id": str(chat_id),
-                "sender_id": str(current_user["id"]),
+                "sender_id": str(request.user["user_id"]),
                 "content": content,
                 "created_at": created_at.isoformat()
             }
