@@ -51,6 +51,7 @@ def login():
             if pwd == user[3]:
                 return jsonify({
                     "message": f"Welcome {user[1]}",
+                    "name": user[1],
                     "user_id": user[0],
                     "role": user[4]
                 }), 200
