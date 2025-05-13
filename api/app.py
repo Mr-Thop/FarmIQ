@@ -5,6 +5,8 @@ import os
 import jwt
 import datetime
 from functools import wraps
+from werkzeug.security import generate_password_hash,check_password_hash
+from flask_wtf.csrf import CSRFProtect
 
 # Environment variables with defaults
 db_user = os.getenv("user") or "avnadmin"
@@ -27,6 +29,7 @@ def conn():
 
 app = Flask(__name__)
 CORS(app)
+CSRFProtect(app)
 
 # JWT Auth Decorator
 def token_required(f):
@@ -52,6 +55,7 @@ def token_required(f):
 def register():
     data = request.json
     name, email, password, role = data.get("name"), data.get("email"), data.get("password"), data.get("role")
+    password = generate_password_hash(password)
 
     try:
         con = conn()
@@ -99,7 +103,7 @@ def login():
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        if user["user_pwd"] != password:
+        if check_password_hash(user["user_pwd"],password):
             return jsonify({"error": "Invalid credentials"}), 401
 
         token = jwt.encode({
