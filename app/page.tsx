@@ -8,6 +8,7 @@ import { motion } from "framer-motion"
 import { ArrowRight, Leaf, Sprout, Sun, CloudRain, Tractor, TreesIcon as Plant, Wheat } from "lucide-react"
 import Image from "next/image"
 import HomeSlideshow from "@/components/home-slideshow"
+import Navbar from "@/components/navbar"
 
 export default function Home() {
   const { user } = useAuth()
@@ -74,6 +75,9 @@ export default function Home() {
       </div>
 
       {/* Hero Section */}
+      <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
+            <Navbar />
+      </div>
       <section className="relative py-20 md:py-32">
         <div className="container mx-auto px-4 text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
