@@ -25,7 +25,6 @@ import {
   Calendar,
   CloudRain,
   BarChart3,
-  Settings,
   LogOut,
   ChevronDown,
 } from "lucide-react"
@@ -51,7 +50,6 @@ export default function Navbar() {
     if (pathname === "/dashboard/calendar") return "Planting Calendar"
     if (pathname === "/dashboard/weather") return "Weather"
     if (pathname === "/dashboard/reports") return "Reports"
-    if (pathname === "/dashboard/settings") return "Settings"
     if (pathname === "/customer") return "Dashboard"
     if (pathname === "/customer/orders") return "My Orders"
     if (pathname === "/customer/saved") return "Saved Items"
@@ -174,12 +172,6 @@ export default function Navbar() {
                         <span>Reports</span>
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/settings" className="flex items-center cursor-pointer">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-                    </DropdownMenuItem>
                   </>
                 ) : (
                   <>
@@ -296,12 +288,6 @@ export default function Navbar() {
                       className="text-base font-medium text-gray-700 hover:text-[#2c5d34]"
                     >
                       Reports
-                    </Link>
-                    <Link
-                      href="/dashboard/settings"
-                      className="text-base font-medium text-gray-700 hover:text-[#2c5d34]"
-                    >
-                      Settings
                     </Link>
                   </>
                 )}

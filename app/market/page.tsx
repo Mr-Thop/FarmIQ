@@ -18,148 +18,29 @@ import { useCart } from "@/context/cart-context"
 import { useAuth } from "@/context/auth-context"
 import LoginRequiredModal from "@/components/login-required-modal"
 import { motion } from "framer-motion"
-import { Analytics } from "@vercel/analytics/next"
-
-// Sample product data
-const products = [
-  {
-    id: "1",
-    name: "Organic Tomatoes",
-    price: 3.5,
-    unit: "kg",
-    farmId: "farm1",
-    farmName: "Green Valley Farm",
-    distance: 5,
-    rating: 4.8,
-    reviews: 24,
-    description: "Vine-ripened organic tomatoes, freshly harvested. Perfect for salads and cooking.",
-    image: "/placeholder.svg?height=192&width=384",
-    availability: "available-now",
-    category: "vegetables",
-    organic: true,
-  },
-  {
-    id: "2",
-    name: "Fresh Lettuce",
-    price: 1.99,
-    unit: "head",
-    farmId: "farm2",
-    farmName: "Sunny Fields",
-    distance: 3,
-    rating: 4.7,
-    reviews: 18,
-    description: "Crisp, hydroponic lettuce grown without pesticides. Harvested daily for maximum freshness.",
-    image: "/placeholder.svg?height=192&width=384",
-    availability: "available-now",
-    category: "vegetables",
-    organic: true,
-  },
-  {
-    id: "3",
-    name: "Sweet Corn",
-    price: 2.75,
-    unit: "dozen",
-    farmId: "farm3",
-    farmName: "Harvest Hills",
-    distance: 8,
-    rating: 4.9,
-    reviews: 32,
-    description: "Sweet, non-GMO corn. Reserve now for the upcoming harvest.",
-    image: "/placeholder.svg?height=192&width=384",
-    availability: "pre-order",
-    availableDate: "July 10",
-    category: "vegetables",
-    organic: false,
-  },
-  {
-    id: "4",
-    name: "Fresh Eggs",
-    price: 4.5,
-    unit: "dozen",
-    farmId: "farm4",
-    farmName: "Happy Hens Farm",
-    distance: 4,
-    rating: 5.0,
-    reviews: 41,
-    description: "Free-range, organic eggs from pasture-raised hens. Collected daily.",
-    image: "/placeholder.svg?height=192&width=384",
-    availability: "available-now",
-    category: "dairy",
-    organic: true,
-  },
-  {
-    id: "5",
-    name: "Raw Honey",
-    price: 8.99,
-    unit: "jar",
-    farmId: "farm5",
-    farmName: "Bee Haven",
-    distance: 7,
-    rating: 4.9,
-    reviews: 27,
-    description: "Pure, unfiltered honey from local wildflower meadows. 16oz jar.",
-    image: "/placeholder.svg?height=192&width=384",
-    availability: "available-now",
-    category: "honey",
-    organic: true,
-  },
-  {
-    id: "6",
-    name: "Organic Apples",
-    price: 2.25,
-    unit: "lb",
-    farmId: "farm6",
-    farmName: "Orchard Valley",
-    distance: 10,
-    rating: 4.8,
-    reviews: 19,
-    description: "Crisp, organic apples. Multiple varieties available. Reserve your bushel now.",
-    image: "/placeholder.svg?height=192&width=384",
-    availability: "pre-order",
-    availableDate: "September 5",
-    category: "fruits",
-    organic: true,
-  },
-  {
-    id: "7",
-    name: "Grass-Fed Beef",
-    price: 12.99,
-    unit: "lb",
-    farmId: "farm7",
-    farmName: "Green Pastures",
-    distance: 12,
-    rating: 4.9,
-    reviews: 36,
-    description: "Locally raised, grass-fed beef. No hormones or antibiotics.",
-    image: "/placeholder.svg?height=192&width=384",
-    availability: "available-now",
-    category: "meat",
-    organic: true,
-  },
-  {
-    id: "8",
-    name: "Fresh Herbs Bundle",
-    price: 3.99,
-    unit: "bundle",
-    farmId: "farm2",
-    farmName: "Sunny Fields",
-    distance: 3,
-    rating: 4.6,
-    reviews: 14,
-    description: "Assorted fresh herbs including basil, rosemary, thyme, and mint.",
-    image: "/placeholder.svg?height=192&width=384",
-    availability: "available-now",
-    category: "herbs",
-    organic: false,
-  },
-]
+import { productService, type Product } from "@/lib/product-service"
+import { useToast } from "@/hooks/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function MarketPage() {
   const { addToCart } = useCart()
   const { isAuthenticated } = useAuth()
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState("buy")
-  const [filteredProducts, setFilteredProducts] = useState(products)
+  const [products, setProducts] = useState<Product[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     priceRange: [0, 50],
@@ -169,9 +50,84 @@ export default function MarketPage() {
     sortBy: "relevance",
   })
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [userProducts, setUserProducts] = useState<Product[]>([])
+  const [isLoadingUserProducts, setIsLoadingUserProducts] = useState(false)
+
+  // New listing dialog state
+  const [showNewListingDialog, setShowNewListingDialog] = useState(false)
+  const [newListing, setNewListing] = useState({
+    name: "",
+    price: "",
+    unit: "kg",
+    category: "",
+    description: "",
+    available: "now",
+    organic: false,
+    quantity: "",
+  })
+
+  // Manage listings dialog state
+  const [showManageListingsDialog, setShowManageListingsDialog] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [editMode, setEditMode] = useState(false)
+
+  // Load products from API
+  useEffect(() => {
+    const loadProducts = async () => {
+      setIsLoading(true)
+      try {
+        const productsData = await productService.getProducts()
+        console.log("Products loaded:", productsData.length)
+        setProducts(productsData)
+        setFilteredProducts(productsData)
+      } catch (error) {
+        console.error("Error loading products:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load products. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadProducts()
+  }, [toast])
+
+  // Load user's products if authenticated and on sell tab
+  useEffect(() => {
+    const loadUserProducts = async () => {
+      if (!isAuthenticated || activeTab !== "sell") return
+
+      setIsLoadingUserProducts(true)
+      try {
+        // In a real app, we'd fetch the user's products
+        // For now, we'll use the first 3 products as a demo
+        const userProds = products.slice(0, 3).map((p) => ({
+          ...p,
+          quantity: Math.floor(Math.random() * 100) + 10,
+        }))
+        setUserProducts(userProds)
+      } catch (error) {
+        console.error("Error loading user products:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load your products. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoadingUserProducts(false)
+      }
+    }
+
+    loadUserProducts()
+  }, [isAuthenticated, activeTab, products, toast])
 
   // Apply filters to products
   const applyFilters = () => {
+    console.log("Applying filters:", filters)
+
     let result = [...products]
 
     // Apply search term
@@ -180,7 +136,7 @@ export default function MarketPage() {
       result = result.filter(
         (product) =>
           product.name.toLowerCase().includes(term) ||
-          product.farmName.toLowerCase().includes(term) ||
+          (product.farmName && product.farmName.toLowerCase().includes(term)) ||
           product.description.toLowerCase().includes(term),
       )
     }
@@ -196,11 +152,21 @@ export default function MarketPage() {
     )
 
     // Apply distance filter
-    result = result.filter((product) => product.distance <= filters.distance)
+    if (typeof filters.distance === "number") {
+      result = result.filter((product) => {
+        // If product doesn't have distance, assume it's within range
+        if (typeof product.distance !== "number") return true
+        return product.distance <= filters.distance
+      })
+    }
 
     // Apply availability filter
     if (filters.availability !== "all") {
-      result = result.filter((product) => product.availability === filters.availability)
+      result = result.filter((product) => {
+        // Map availability strings
+        const productAvailability = product.available ? "available-now" : "pre-order"
+        return productAvailability === filters.availability
+      })
     }
 
     // Apply organic filter
@@ -217,10 +183,18 @@ export default function MarketPage() {
         result.sort((a, b) => b.price - a.price)
         break
       case "distance":
-        result.sort((a, b) => a.distance - b.distance)
+        result.sort((a, b) => {
+          const distA = typeof a.distance === "number" ? a.distance : Number.POSITIVE_INFINITY
+          const distB = typeof b.distance === "number" ? b.distance : Number.POSITIVE_INFINITY
+          return distA - distB
+        })
         break
       case "rating":
-        result.sort((a, b) => b.rating - a.rating)
+        result.sort((a, b) => {
+          const ratingA = typeof a.rating === "number" ? a.rating : 0
+          const ratingB = typeof b.rating === "number" ? b.rating : 0
+          return ratingB - ratingA
+        })
         break
       default:
         // relevance - keep original order
@@ -241,6 +215,7 @@ export default function MarketPage() {
       sortBy: "relevance",
     })
     setSearchTerm("")
+    setFilteredProducts(products)
   }
 
   // Apply filters when filters or search term changes
@@ -254,7 +229,7 @@ export default function MarketPage() {
   }
 
   // Handle add to cart with authentication check
-  const handleAddToCart = (product: any) => {
+  const handleAddToCart = (product: Product) => {
     if (!isAuthenticated) {
       setShowLoginModal(true)
       return
@@ -265,20 +240,28 @@ export default function MarketPage() {
       name: product.name,
       price: product.price,
       unit: product.unit,
-      farmName: product.farmName,
+      farmName: product.farmName || `Farm #${product.farm_id}`,
       image: product.image,
       quantity: 1,
+    })
+
+    toast({
+      title: "Added to cart",
+      description: `${product.name} has been added to your cart.`,
     })
   }
 
   // Handle save item with authentication check
-  const handleSaveItem = () => {
+  const handleSaveItem = (product: Product) => {
     if (!isAuthenticated) {
       setShowLoginModal(true)
       return
     }
 
-    // Save item functionality would go here
+    toast({
+      title: "Item saved",
+      description: `${product.name} has been saved to your favorites.`,
+    })
   }
 
   // Handle sell tab click with authentication check
@@ -291,10 +274,125 @@ export default function MarketPage() {
     setActiveTab(value)
   }
 
+  // Handle add new listing
+  const handleAddNewListing = () => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true)
+      return
+    }
+
+    setShowNewListingDialog(true)
+  }
+
+  // Handle submit new listing
+  const handleSubmitNewListing = () => {
+    // Validate form
+    if (
+      !newListing.name ||
+      !newListing.price ||
+      !newListing.category ||
+      !newListing.description ||
+      !newListing.quantity
+    ) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // In a real app, we would submit to the API
+    // For now, just add to the user's products
+    const newProduct = {
+      id: `new-${Date.now()}`,
+      name: newListing.name,
+      price: Number.parseFloat(newListing.price),
+      unit: newListing.unit,
+      category: newListing.category,
+      description: newListing.description,
+      available: newListing.available === "now",
+      organic: newListing.organic,
+      farm_id: "1",
+      farmName: "Your Farm",
+      image: "/placeholder.svg?height=200&width=300",
+      quantity: Number.parseInt(newListing.quantity),
+      availableDate: newListing.available === "now" ? undefined : "June 15, 2023",
+    }
+
+    setUserProducts([newProduct, ...userProducts])
+    setShowNewListingDialog(false)
+
+    // Reset form
+    setNewListing({
+      name: "",
+      price: "",
+      unit: "kg",
+      category: "",
+      description: "",
+      available: "now",
+      organic: false,
+      quantity: "",
+    })
+
+    toast({
+      title: "Listing added",
+      description: `${newListing.name} has been added to your listings.`,
+    })
+  }
+
+  // Handle manage listings
+  const handleManageListings = () => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true)
+      return
+    }
+
+    setShowManageListingsDialog(true)
+  }
+
+  // Handle edit product
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(product)
+    setEditMode(true)
+    setShowManageListingsDialog(true)
+  }
+
+  // Handle update product
+  const handleUpdateProduct = () => {
+    if (!selectedProduct) return
+
+    // In a real app, we would submit to the API
+    // For now, just update the user's products
+    const updatedProducts = userProducts.map((p) => (p.id === selectedProduct.id ? selectedProduct : p))
+
+    setUserProducts(updatedProducts)
+    setShowManageListingsDialog(false)
+    setSelectedProduct(null)
+    setEditMode(false)
+
+    toast({
+      title: "Product updated",
+      description: `${selectedProduct.name} has been updated.`,
+    })
+  }
+
+  // Handle remove product
+  const handleRemoveProduct = (product: Product) => {
+    // In a real app, we would submit to the API
+    // For now, just remove from the user's products
+    const updatedProducts = userProducts.filter((p) => p.id !== product.id)
+    setUserProducts(updatedProducts)
+
+    toast({
+      title: "Product removed",
+      description: `${product.name} has been removed from your listings.`,
+    })
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
       <Navbar />
-      <Analytics/>
 
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="container mx-auto max-w-7xl">
@@ -344,7 +442,12 @@ export default function MarketPage() {
 
                 {/* Product grid */}
                 <div className="flex-1">
-                  {filteredProducts.length === 0 ? (
+                  {isLoading ? (
+                    <div className="text-center py-12">
+                      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#2c5d34] border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                      <p className="mt-4 text-gray-600">Loading products...</p>
+                    </div>
+                  ) : filteredProducts.length === 0 ? (
                     <div className="text-center py-12">
                       <h3 className="text-lg font-medium text-gray-700 mb-2">No products found</h3>
                       <p className="text-gray-500 mb-4">Try adjusting your filters or search term</p>
@@ -390,16 +493,16 @@ export default function MarketPage() {
                               <CardHeader className="p-0">
                                 <div className="relative h-48">
                                   <img
-                                    src={product.image || "/placeholder.svg"}
+                                    src={product.image || "/placeholder.svg?height=200&width=300"}
                                     alt={product.name}
                                     className="w-full h-full object-cover rounded-t-lg"
                                   />
                                   <div
                                     className={`absolute top-2 right-2 text-white text-xs px-2 py-1 rounded-full ${
-                                      product.availability === "available-now" ? "bg-[#2c5d34]" : "bg-amber-500"
+                                      product.available ? "bg-[#2c5d34]" : "bg-amber-500"
                                     }`}
                                   >
-                                    {product.availability === "available-now" ? "Available Now" : "Pre-order"}
+                                    {product.available ? "Available Now" : "Pre-order"}
                                   </div>
                                   {product.organic && (
                                     <div className="absolute top-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded-full">
@@ -410,7 +513,7 @@ export default function MarketPage() {
                                     variant="ghost"
                                     size="icon"
                                     className="absolute bottom-2 right-2 bg-white/80 hover:bg-white text-[#2c5d34] rounded-full h-8 w-8"
-                                    onClick={handleSaveItem}
+                                    onClick={() => handleSaveItem(product)}
                                   >
                                     <Heart className="h-4 w-4" />
                                     <span className="sr-only">Save {product.name}</span>
@@ -420,7 +523,7 @@ export default function MarketPage() {
                               <CardContent className="pt-4">
                                 <div className="flex justify-between items-start mb-2">
                                   <Link
-                                    href={`/farm/${product.farmId}`}
+                                    href={`/farm/${product.farm_id}`}
                                     className="font-semibold text-[#2c5d34] hover:underline"
                                   >
                                     {product.name}
@@ -432,24 +535,27 @@ export default function MarketPage() {
                                 <div className="flex items-center text-sm text-gray-500 mb-2">
                                   <MapPin className="h-3 w-3 mr-1" />
                                   <Link
-                                    href={`/farm/${product.farmId}`}
+                                    href={`/farm/${product.farm_id}`}
                                     className="hover:text-[#2c5d34] hover:underline"
                                   >
-                                    {product.farmName} ({product.distance} miles)
+                                    {product.farmName || `Farm #${product.farm_id}`}
+                                    {product.distance ? ` (${product.distance} miles)` : ""}
                                   </Link>
                                 </div>
-                                {product.availability === "pre-order" && product.availableDate && (
+                                {!product.available && product.availableDate && (
                                   <div className="flex items-center text-sm text-gray-500 mb-2">
                                     <Calendar className="h-3 w-3 mr-1" />
                                     <span>Available: {product.availableDate}</span>
                                   </div>
                                 )}
-                                <div className="flex items-center text-sm text-gray-500 mb-3">
-                                  <Star className="h-3 w-3 mr-1 text-yellow-500" />
-                                  <span>
-                                    {product.rating} ({product.reviews} reviews)
-                                  </span>
-                                </div>
+                                {product.rating && (
+                                  <div className="flex items-center text-sm text-gray-500 mb-3">
+                                    <Star className="h-3 w-3 mr-1 text-yellow-500" />
+                                    <span>
+                                      {product.rating} ({product.reviews || 0} reviews)
+                                    </span>
+                                  </div>
+                                )}
                                 <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
                               </CardContent>
                               <CardFooter className="pt-0">
@@ -458,7 +564,7 @@ export default function MarketPage() {
                                   onClick={() => handleAddToCart(product)}
                                 >
                                   <ShoppingCart className="h-4 w-4 mr-2" />
-                                  {product.availability === "available-now" ? "Add to Cart" : "Pre-order"}
+                                  {product.available ? "Add to Cart" : "Pre-order"}
                                 </Button>
                               </CardFooter>
                             </Card>
@@ -479,10 +585,14 @@ export default function MarketPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <Button className="w-full h-32 bg-[#2c5d34] hover:bg-[#1e3f24]">Add New Listing</Button>
+                      <Button className="w-full h-32 bg-[#2c5d34] hover:bg-[#1e3f24]" onClick={handleAddNewListing}>
+                        Add New Listing
+                      </Button>
                     </div>
                     <div>
-                      <Button className="w-full h-32 bg-[#2c5d34] hover:bg-[#1e3f24]">Manage Existing Listings</Button>
+                      <Button className="w-full h-32 bg-[#2c5d34] hover:bg-[#1e3f24]" onClick={handleManageListings}>
+                        Manage Existing Listings
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -493,91 +603,67 @@ export default function MarketPage() {
                   <CardTitle className="text-[#2c5d34]">Your Active Listings</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex flex-col md:flex-row justify-between items-start p-4 border border-[#d8e6c0] rounded-md hover:bg-[#f0f5e8] transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 bg-[#e6f0d8] rounded-md overflow-hidden">
-                          <img
-                            src="/placeholder.svg?height=64&width=64"
-                            alt="Organic Tomatoes"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-medium">Organic Tomatoes</h3>
-                          <p className="text-sm text-gray-500">Available: Now</p>
-                          <p className="text-sm text-gray-500">Quantity: 50kg</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 md:mt-0 flex flex-col items-end">
-                        <p className="font-bold">$3.50/kg</p>
-                        <div className="flex gap-2 mt-2">
-                          <Button variant="outline" size="sm" className="border-[#d8e6c0] text-[#2c5d34]">
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm" className="border-[#d8e6c0] text-red-600">
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
+                  {isLoadingUserProducts ? (
+                    <div className="text-center py-4">
+                      <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-[#2c5d34] border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                      <p className="mt-2 text-gray-600">Loading your listings...</p>
                     </div>
-
-                    <div className="flex flex-col md:flex-row justify-between items-start p-4 border border-[#d8e6c0] rounded-md hover:bg-[#f0f5e8] transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 bg-[#e6f0d8] rounded-md overflow-hidden">
-                          <img
-                            src="/placeholder.svg?height=64&width=64"
-                            alt="Sweet Corn"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-medium">Sweet Corn</h3>
-                          <p className="text-sm text-gray-500">Available: July 10</p>
-                          <p className="text-sm text-gray-500">Quantity: 200 dozen</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 md:mt-0 flex flex-col items-end">
-                        <p className="font-bold">$2.75/dozen</p>
-                        <div className="flex gap-2 mt-2">
-                          <Button variant="outline" size="sm" className="border-[#d8e6c0] text-[#2c5d34]">
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm" className="border-[#d8e6c0] text-red-600">
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
+                  ) : userProducts.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      You don't have any active listings yet. Click "Add New Listing" to get started.
                     </div>
-
-                    <div className="flex flex-col md:flex-row justify-between items-start p-4 border border-[#d8e6c0] rounded-md hover:bg-[#f0f5e8] transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 bg-[#e6f0d8] rounded-md overflow-hidden">
-                          <img
-                            src="/placeholder.svg?height=64&width=64"
-                            alt="Fresh Lettuce"
-                            className="h-full w-full object-cover"
-                          />
+                  ) : (
+                    <div className="space-y-4">
+                      {userProducts.map((product) => (
+                        <div
+                          key={product.id}
+                          className="flex flex-col md:flex-row justify-between items-start p-4 border border-[#d8e6c0] rounded-md hover:bg-[#f0f5e8] transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="h-16 w-16 bg-[#e6f0d8] rounded-md overflow-hidden">
+                              <img
+                                src={product.image || "/placeholder.svg?height=64&width=64"}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <div>
+                              <h3 className="font-medium">{product.name}</h3>
+                              <p className="text-sm text-gray-500">
+                                Available: {product.available ? "Now" : "Pre-order"}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                Quantity: {product.quantity || Math.floor(Math.random() * 100) + 10} {product.unit}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-4 md:mt-0 flex flex-col items-end">
+                            <p className="font-bold">
+                              ${product.price}/{product.unit}
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-[#d8e6c0] text-[#2c5d34]"
+                                onClick={() => handleEditProduct(product)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-[#d8e6c0] text-red-600"
+                                onClick={() => handleRemoveProduct(product)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-medium">Fresh Lettuce</h3>
-                          <p className="text-sm text-gray-500">Available: Now</p>
-                          <p className="text-sm text-gray-500">Quantity: 75 heads</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 md:mt-0 flex flex-col items-end">
-                        <p className="font-bold">$1.99/head</p>
-                        <div className="flex gap-2 mt-2">
-                          <Button variant="outline" size="sm" className="border-[#d8e6c0] text-[#2c5d34]">
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm" className="border-[#d8e6c0] text-red-600">
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -594,6 +680,278 @@ export default function MarketPage() {
         onClose={() => setShowLoginModal(false)}
         message="You need to login to access this feature. Would you like to login now?"
       />
+
+      {/* New Listing Dialog */}
+      <Dialog open={showNewListingDialog} onOpenChange={setShowNewListingDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Listing</DialogTitle>
+            <DialogDescription>Fill in the details below to create a new product listing.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name*
+              </Label>
+              <Input
+                id="name"
+                value={newListing.name}
+                onChange={(e) => setNewListing({ ...newListing, name: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="price" className="text-right">
+                Price*
+              </Label>
+              <div className="col-span-3 flex gap-2">
+                <Input
+                  id="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newListing.price}
+                  onChange={(e) => setNewListing({ ...newListing, price: e.target.value })}
+                  className="flex-1"
+                />
+                <Select
+                  value={newListing.unit}
+                  onValueChange={(value) => setNewListing({ ...newListing, unit: value })}
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue placeholder="Unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kg">kg</SelectItem>
+                    <SelectItem value="lb">lb</SelectItem>
+                    <SelectItem value="each">each</SelectItem>
+                    <SelectItem value="bunch">bunch</SelectItem>
+                    <SelectItem value="dozen">dozen</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="quantity" className="text-right">
+                Quantity*
+              </Label>
+              <Input
+                id="quantity"
+                type="number"
+                min="1"
+                value={newListing.quantity}
+                onChange={(e) => setNewListing({ ...newListing, quantity: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category" className="text-right">
+                Category*
+              </Label>
+              <Select
+                value={newListing.category}
+                onValueChange={(value) => setNewListing({ ...newListing, category: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vegetables">Vegetables</SelectItem>
+                  <SelectItem value="fruits">Fruits</SelectItem>
+                  <SelectItem value="herbs">Herbs</SelectItem>
+                  <SelectItem value="dairy">Dairy</SelectItem>
+                  <SelectItem value="meat">Meat</SelectItem>
+                  <SelectItem value="eggs">Eggs</SelectItem>
+                  <SelectItem value="honey">Honey</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="availability" className="text-right">
+                Availability
+              </Label>
+              <Select
+                value={newListing.available}
+                onValueChange={(value) => setNewListing({ ...newListing, available: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select availability" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="now">Available Now</SelectItem>
+                  <SelectItem value="preorder">Pre-order</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="organic" className="text-right">
+                Organic
+              </Label>
+              <div className="col-span-3 flex items-center">
+                <input
+                  type="checkbox"
+                  id="organic"
+                  checked={newListing.organic}
+                  onChange={(e) => setNewListing({ ...newListing, organic: e.target.checked })}
+                  className="mr-2 h-4 w-4"
+                />
+                <Label htmlFor="organic" className="text-sm">
+                  This product is certified organic
+                </Label>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="description" className="text-right pt-2">
+                Description*
+              </Label>
+              <Textarea
+                id="description"
+                value={newListing.description}
+                onChange={(e) => setNewListing({ ...newListing, description: e.target.value })}
+                className="col-span-3"
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewListingDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitNewListing} className="bg-[#2c5d34] hover:bg-[#1e3f24]">
+              Add Listing
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Listings Dialog */}
+      <Dialog open={showManageListingsDialog} onOpenChange={setShowManageListingsDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editMode ? "Edit Product" : "Manage Listings"}</DialogTitle>
+            <DialogDescription>
+              {editMode ? "Update your product details below." : "View and manage your product listings."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {editMode && selectedProduct ? (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-name" className="text-right">
+                  Name
+                </Label>
+                <Input
+                  id="edit-name"
+                  value={selectedProduct.name}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-price" className="text-right">
+                  Price
+                </Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={selectedProduct.price}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, price: Number.parseFloat(e.target.value) })}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="edit-description" className="text-right pt-2">
+                  Description
+                </Label>
+                <Textarea
+                  id="edit-description"
+                  value={selectedProduct.description}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, description: e.target.value })}
+                  className="col-span-3"
+                  rows={4}
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEditMode(false)
+                    setSelectedProduct(null)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateProduct} className="bg-[#2c5d34] hover:bg-[#1e3f24]">
+                  Update Product
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="py-4">
+              {userProducts.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">You don't have any active listings yet.</div>
+              ) : (
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                  {userProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="flex justify-between items-center p-4 border border-[#d8e6c0] rounded-md hover:bg-[#f0f5e8] transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-[#e6f0d8] rounded-md overflow-hidden">
+                          <img
+                            src={product.image || "/placeholder.svg?height=48&width=48"}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{product.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            ${product.price}/{product.unit} · {product.available ? "Available Now" : "Pre-order"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-[#d8e6c0] text-[#2c5d34]"
+                          onClick={() => {
+                            setSelectedProduct(product)
+                            setEditMode(true)
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-[#d8e6c0] text-red-600"
+                          onClick={() => {
+                            handleRemoveProduct(product)
+                            if (userProducts.length <= 1) {
+                              setShowManageListingsDialog(false)
+                            }
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-6 flex justify-end">
+                <Button onClick={() => setShowManageListingsDialog(false)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

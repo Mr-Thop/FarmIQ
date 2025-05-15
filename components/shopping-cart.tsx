@@ -16,20 +16,64 @@ import { Separator } from "@/components/ui/separator"
 import { ShoppingCartIcon as CartIcon, Minus, Plus, X, ShoppingBag } from "lucide-react"
 import { useCart, type CartItem } from "@/context/cart-context"
 import { Badge } from "@/components/ui/badge"
+import { cartService } from "@/lib/cart-service"
+import { useAuth } from "@/context/auth-context"
+import { toast } from "@/components/ui/use-toast"
 
 export default function ShoppingCart() {
   const { items, removeFromCart, updateQuantity, clearCart, isCartOpen, setIsCartOpen, totalItems, subtotal } =
     useCart()
+  const { isAuthenticated } = useAuth()
   const [isCheckingOut, setIsCheckingOut] = useState(false)
 
-  const handleCheckout = () => {
-    setIsCheckingOut(true)
-    // Simulate checkout process
-    setTimeout(() => {
-      clearCart()
-      setIsCheckingOut(false)
+  const handleCheckout = async () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Login required",
+        description: "Please login to checkout",
+        variant: "destructive",
+      })
       setIsCartOpen(false)
-    }, 2000)
+      // Trigger login modal
+      document.getElementById("login-trigger")?.click()
+      return
+    }
+
+    setIsCheckingOut(true)
+
+    try {
+      // Example shipping address and payment method
+      const orderData = {
+        shippingAddress: "123 Farm Road, Greenville, CA 95432",
+        paymentMethod: "Credit Card",
+      }
+
+      const { orderId, success } = await cartService.createOrder(orderData)
+
+      if (success) {
+        toast({
+          title: "Order successful!",
+          description: `Your order #${orderId} has been placed`,
+        })
+        clearCart()
+        setIsCartOpen(false)
+      } else {
+        toast({
+          title: "Checkout failed",
+          description: "Could not place your order. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Checkout error:", error)
+      toast({
+        title: "Checkout error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCheckingOut(false)
+    }
   }
 
   return (

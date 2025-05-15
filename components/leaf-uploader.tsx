@@ -5,6 +5,8 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Upload, ImageIcon, Loader2 } from "lucide-react"
+import { analysisService } from "@/lib/analysis-service"
+import { toast } from "@/components/ui/use-toast"
 
 export default function LeafUploader() {
   const [isDragging, setIsDragging] = useState(false)
@@ -40,7 +42,11 @@ export default function LeafUploader() {
   const handleFile = (file: File) => {
     // Check if file is an image
     if (!file.type.match("image.*")) {
-      alert("Please upload an image file")
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file",
+        variant: "destructive",
+      })
       return
     }
 
@@ -59,30 +65,69 @@ export default function LeafUploader() {
     setResults(null)
   }
 
-  const analyzeImage = () => {
+  const analyzeImage = async () => {
     if (!file) return
 
     setIsAnalyzing(true)
 
-    // Simulate analysis (in a real app, this would call an API)
-    setTimeout(() => {
-      setIsAnalyzing(false)
-      setResults({
-        plant: "Tomato",
-        disease: "Early Blight",
-        confidence: "92%",
-        severity: "Moderate",
-        description:
-          "Early blight is a fungal disease that affects tomatoes, potatoes, and other nightshade plants. It's characterized by brown spots with concentric rings, often on lower leaves.",
-        treatments: [
-          "Remove and destroy affected leaves",
-          "Apply fungicide specifically labeled for early blight",
-          "Improve air circulation around plants",
-          "Water at the base of plants to keep foliage dry",
-          "Rotate crops annually",
-        ],
+    try {
+      // Create a data URL for the image
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+
+      reader.onload = async (e) => {
+        if (!e.target) return
+
+        const imageUrl = e.target.result as string
+
+        // Prepare the analysis data in the format expected by the backend
+        const analysisData = {
+          image_url: imageUrl,
+          plant: "Tomato",
+          disease: "Early Blight",
+          confidence: "92%",
+          severity: "Moderate",
+          treatments: [
+            "Remove and destroy affected leaves",
+            "Apply fungicide specifically labeled for early blight",
+            "Improve air circulation around plants",
+            "Water at the base of plants to keep foliage dry",
+            "Rotate crops annually",
+          ],
+        }
+
+        // Send the analysis data to the backend
+        const success = await analysisService.analyzeLeaf(analysisData)
+
+        if (success) {
+          setResults({
+            plant: analysisData.plant,
+            disease: analysisData.disease,
+            confidence: analysisData.confidence,
+            severity: analysisData.severity,
+            description:
+              "Early blight is a fungal disease that affects tomatoes, potatoes, and other nightshade plants. It's characterized by brown spots with concentric rings, often on lower leaves.",
+            treatments: analysisData.treatments,
+          })
+        } else {
+          toast({
+            title: "Analysis failed",
+            description: "Could not save leaf analysis result",
+            variant: "destructive",
+          })
+        }
+
+        setIsAnalyzing(false)
+      }
+    } catch (error) {
+      console.error("Leaf analysis error:", error)
+      toast({
+        title: "Analysis error",
+        description: "An error occurred during analysis",
+        variant: "destructive",
       })
-    }, 2000)
+      setIsAnalyzing(false)
+    }
   }
 
   const resetUpload = () => {
@@ -127,7 +172,11 @@ export default function LeafUploader() {
             <div>
               <h3 className="text-lg font-medium mb-3">Leaf Photo</h3>
               <div className="border border-[#d8e6c0] rounded-lg overflow-hidden">
-                <img src={preview || "/placeholder.svg"} alt="Leaf sample" className="w-full h-64 object-cover" />
+                <img
+                  src={preview || "/placeholder.svg?height=300&width=400"}
+                  alt="Leaf sample"
+                  className="w-full h-64 object-cover"
+                />
               </div>
               <div className="flex items-center justify-between mt-3">
                 <p className="text-sm text-gray-500">
@@ -187,14 +236,15 @@ export default function LeafUploader() {
             <div className="border border-[#d8e6c0] rounded-lg p-6 bg-[#f8f9f5]">
               <h3 className="text-lg font-medium mb-3">Treatment Recommendations</h3>
               <ul className="space-y-2 text-sm text-gray-700">
-                {results.treatments.map((treatment: string, index: number) => (
-                  <li key={index} className="flex items-start">
-                    <span className="inline-flex items-center justify-center rounded-full bg-[#2c5d34] text-white h-5 w-5 text-xs mr-2 mt-0.5">
-                      {index + 1}
-                    </span>
-                    {treatment}
-                  </li>
-                ))}
+                {results.treatments &&
+                  results.treatments.map((treatment: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <span className="inline-flex items-center justify-center rounded-full bg-[#2c5d34] text-white h-5 w-5 text-xs mr-2 mt-0.5">
+                        {index + 1}
+                      </span>
+                      {treatment}
+                    </li>
+                  ))}
               </ul>
               <div className="mt-6 p-4 bg-[#e6f0d8] rounded-md">
                 <p className="text-sm text-gray-700">

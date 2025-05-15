@@ -1,34 +1,27 @@
 import type React from "react"
-import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google"
 import "./globals.css"
-import { CartProvider } from "@/context/cart-context"
+import { Inter } from "next/font/google"
 import { AuthProvider } from "@/context/auth-context"
+import { CartProvider } from "@/context/cart-context"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
-export const metadata: Metadata = {
-  title: "FarmIQ - Smart Farming Platform",
-  description: "The intelligent farming platform that helps you optimize your crops and connect with buyers",
+export const metadata = {
+  title: "FarmIQ - Farm Management & Marketplace",
+  description: "Connect with local farmers, buy fresh produce, and manage your farm with AI-powered tools.",
+    generator: 'v0.dev'
 }
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1.0,
-  maximumScale: 1.0
-
-}
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            {children}
+            <Toaster />
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

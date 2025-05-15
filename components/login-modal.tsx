@@ -44,7 +44,9 @@ export default function LoginModal({ isOpen, onClose, defaultTab = "login" }: Lo
       return
     }
 
+    console.log("Logging in with:", { email: loginEmail, role: loginRole })
     const success = await login(loginEmail, loginPassword, loginRole)
+
     if (success) {
       onClose()
     } else {
@@ -61,7 +63,9 @@ export default function LoginModal({ isOpen, onClose, defaultTab = "login" }: Lo
       return
     }
 
+    console.log("Registering with:", { name: registerName, email: registerEmail, role: registerRole })
     const success = await register(registerName, registerEmail, registerPassword, registerRole)
+
     if (success) {
       onClose()
     } else {

@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useAuth } from "@/context/auth-context"
@@ -9,16 +8,10 @@ import { motion } from "framer-motion"
 import { ArrowRight, Leaf, Sprout, Sun, CloudRain, Tractor, TreesIcon as Plant, Wheat } from "lucide-react"
 import Image from "next/image"
 import HomeSlideshow from "@/components/home-slideshow"
-import Navbar from "@/components/navbar"
-import LoginRequiredModal from "@/components/login-required-modal"
-import { Analytics } from "@vercel/analytics/next"
-
 
 export default function Home() {
   const { user } = useAuth()
   const router = useRouter()
-  const [showLoginModal, setShowLoginModal] = useState(false)
-
 
   const handleGetStarted = () => {
     if (user) {
@@ -29,7 +22,7 @@ export default function Home() {
       }
     } else {
       // Open login modal
-      setShowLoginModal(true)
+      document.getElementById("login-trigger")?.click()
     }
   }
 
@@ -58,7 +51,6 @@ export default function Home() {
 
   return (
     <div className="relative overflow-hidden">
-      <Analytics/>
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden -z-10">
         <motion.div
@@ -80,9 +72,7 @@ export default function Home() {
           className="absolute top-1/3 -right-20 h-80 w-80 rounded-full bg-blue-200"
         />
       </div>
-      <div className="flex flex-col bg-white">
-      <Navbar />
-      </div>
+
       {/* Hero Section */}
       <section className="relative py-20 md:py-32">
         <div className="container mx-auto px-4 text-center">
@@ -430,12 +420,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <LoginRequiredModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        message="You need to login to get started. Would you like to login now?"
-      />
-
     </div>
   )
 }

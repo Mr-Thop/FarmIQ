@@ -4,13 +4,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Leaf, Users, Award, Globe, MessageSquare, ShieldCheck } from "lucide-react"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
-import { Analytics } from "@vercel/analytics/next"
 
 export default function AboutPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
       <Navbar />
-      <Analytics/>
 
       <main className="flex-1">
         {/* Hero Section */}
@@ -114,12 +112,11 @@ export default function AboutPage() {
                     sustainable and connected food ecosystem.
                   </p>
                 </div>
-                <div className="rounded-lg overflow-hidden shadow-md">
-                  <img
-                    src="/placeholder.svg?height=400&width=600"
-                    alt="Farmers working in field"
-                    className="w-full h-auto"
-                  />
+                <div className="rounded-lg overflow-hidden shadow-md bg-gray-100 h-[400px] flex items-center justify-center">
+                  <div className="text-center p-4">
+                    <Leaf className="h-16 w-16 text-[#2c5d34] mx-auto mb-4" />
+                    <p className="text-[#2c5d34] font-medium">Sustainable Farming Practices</p>
+                  </div>
                 </div>
               </div>
             </div>

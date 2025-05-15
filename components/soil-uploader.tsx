@@ -5,6 +5,8 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Upload, ImageIcon, Loader2 } from "lucide-react"
+import { analysisService } from "@/lib/analysis-service"
+import { toast } from "@/components/ui/use-toast"
 
 export default function SoilUploader() {
   const [isDragging, setIsDragging] = useState(false)
@@ -40,7 +42,11 @@ export default function SoilUploader() {
   const handleFile = (file: File) => {
     // Check if file is an image
     if (!file.type.match("image.*")) {
-      alert("Please upload an image file")
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file",
+        variant: "destructive",
+      })
       return
     }
 
@@ -59,23 +65,48 @@ export default function SoilUploader() {
     setResults(null)
   }
 
-  const analyzeImage = () => {
+  const analyzeImage = async () => {
     if (!file) return
 
     setIsAnalyzing(true)
 
-    // Simulate analysis (in a real app, this would call an API)
-    setTimeout(() => {
-      setIsAnalyzing(false)
-      setResults({
-        soilType: "Loamy",
-        pH: "6.8 (Neutral)",
-        organicMatter: "Medium",
-        moisture: "Moderate",
-        quality: "Good",
-        recommendedCrops: ["Tomatoes", "Peppers", "Cucumbers", "Lettuce", "Carrots"],
+    try {
+      const analysisResult = await analysisService.analyzeSoil(file)
+      console.log("Soil analysis result:", analysisResult)
+
+      if (analysisResult) {
+        // Transform API result to expected format
+        setResults({
+          soilType: analysisResult.soilType || "Loamy",
+          pH: analysisResult.pH || "6.8 (Neutral)",
+          organicMatter: analysisResult.organicMatter || "Medium",
+          moisture: analysisResult.moisture || "Moderate",
+          quality: analysisResult.quality || "Good",
+          recommendedCrops: analysisResult.recommendedCrops || [
+            "Tomatoes",
+            "Peppers",
+            "Cucumbers",
+            "Lettuce",
+            "Carrots",
+          ],
+        })
+      } else {
+        toast({
+          title: "Analysis failed",
+          description: "Could not analyze soil image",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Soil analysis error:", error)
+      toast({
+        title: "Analysis error",
+        description: "An error occurred during analysis",
+        variant: "destructive",
       })
-    }, 2000)
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   const resetUpload = () => {
@@ -120,7 +151,11 @@ export default function SoilUploader() {
             <div>
               <h3 className="text-lg font-medium mb-3">Soil Photo</h3>
               <div className="border border-[#d8e6c0] rounded-lg overflow-hidden">
-                <img src={preview || "/placeholder.svg"} alt="Soil sample" className="w-full h-64 object-cover" />
+                <img
+                  src={preview || "/placeholder.svg?height=300&width=400"}
+                  alt="Soil sample"
+                  className="w-full h-64 object-cover"
+                />
               </div>
               <div className="flex items-center justify-between mt-3">
                 <p className="text-sm text-gray-500">
@@ -166,11 +201,12 @@ export default function SoilUploader() {
                     <div className="pt-2">
                       <p className="text-sm font-medium mb-2">Recommended Crops:</p>
                       <div className="flex flex-wrap gap-2">
-                        {results.recommendedCrops.map((crop: string) => (
-                          <span key={crop} className="text-xs bg-[#e6f0d8] text-[#2c5d34] px-2 py-1 rounded-full">
-                            {crop}
-                          </span>
-                        ))}
+                        {results.recommendedCrops &&
+                          results.recommendedCrops.map((crop: string) => (
+                            <span key={crop} className="text-xs bg-[#e6f0d8] text-[#2c5d34] px-2 py-1 rounded-full">
+                              {crop}
+                            </span>
+                          ))}
                       </div>
                     </div>
                   </div>
@@ -198,7 +234,6 @@ export default function SoilUploader() {
                   <strong>Add compost:</strong> Incorporate organic matter to improve soil structure and nutrient
                   content.
                 </li>
-                <li></li>
                 <li>
                   <strong>Adjust pH if needed:</strong> Your soil pH is in the optimal range. Maintain it by avoiding
                   excessive use of chemical fertilizers.

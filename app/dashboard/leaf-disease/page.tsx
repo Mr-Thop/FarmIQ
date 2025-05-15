@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,11 +13,54 @@ import LeafUploader from "@/components/leaf-uploader"
 import { motion } from "framer-motion"
 import { useAuth } from "@/context/auth-context"
 import LoginRequiredModal from "@/components/login-required-modal"
-import { Analytics } from "@vercel/analytics/next"
+import { analysisService } from "@/lib/analysis-service"
+import { useToast } from "@/components/ui/use-toast"
+import ErrorBoundary from "@/components/error-boundary"
 
 export default function LeafDiseasePage() {
+  return (
+    <ErrorBoundary>
+      <LeafDiseaseContent />
+    </ErrorBoundary>
+  )
+}
+
+function LeafDiseaseContent() {
   const { isAuthenticated } = useAuth()
   const [showLoginModal, setShowLoginModal] = useState(!isAuthenticated)
+  const { toast } = useToast()
+
+  // State for data - initialize as empty array
+  const [leafAnalyses, setLeafAnalyses] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Fetch data on component mount
+  useEffect(() => {
+    const fetchLeafAnalyses = async () => {
+      if (!isAuthenticated) return
+
+      setIsLoading(true)
+      try {
+        const analyses = await analysisService.getLeafAnalyses()
+        // Ensure we always set an array, even if the API returns undefined
+        setLeafAnalyses(analyses || [])
+        console.log("Leaf analyses loaded:", analyses)
+      } catch (error) {
+        console.error("Error fetching leaf analyses:", error)
+        // Set empty array on error
+        setLeafAnalyses([])
+        toast({
+          title: "Error",
+          description: "Failed to load leaf disease analyses. Please try again later.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchLeafAnalyses()
+  }, [isAuthenticated, toast])
 
   if (!isAuthenticated) {
     return (
@@ -38,7 +81,6 @@ export default function LeafDiseasePage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
       <Navbar />
-      <Analytics/>
 
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="max-w-6xl mx-auto">
@@ -78,34 +120,42 @@ export default function LeafDiseasePage() {
                 <Card className="border-[#d8e6c0]">
                   <CardContent className="pt-6">
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {[1, 2, 3, 4].map((item) => (
-                          <motion.div
-                            key={item}
-                            whileHover={{ y: -5 }}
-                            className="border border-[#d8e6c0] rounded-md overflow-hidden hover:shadow-md transition-shadow"
-                          >
-                            <div className="h-40 bg-[#e6f0d8] flex items-center justify-center">
-                              <img
-                                src="/placeholder.svg?height=160&width=240"
-                                alt={`Leaf sample ${item}`}
-                                className="h-full w-full object-cover"
-                              />
-                            </div>
-                            <div className="p-3">
-                              <p className="font-medium">Tomato Leaf</p>
-                              <p className="text-sm text-gray-500">Analyzed on May {item + 5}, 2025</p>
-                              <div className="flex items-center mt-2">
-                                <span className="text-sm font-medium mr-2">Diagnosis:</span>
-                                <span className="text-sm text-red-600">Early Blight</span>
+                      {isLoading ? (
+                        <div className="text-center py-8 text-gray-500">Loading analyses...</div>
+                      ) : leafAnalyses && leafAnalyses.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {leafAnalyses.map((analysis, index) => (
+                            <motion.div
+                              key={index}
+                              whileHover={{ y: -5 }}
+                              className="border border-[#d8e6c0] rounded-md overflow-hidden hover:shadow-md transition-shadow"
+                            >
+                              <div className="h-40 bg-[#e6f0d8] flex items-center justify-center">
+                                <img
+                                  src={analysis.image_url || "/images/placeholder-leaf.jpg"}
+                                  alt={`Leaf sample ${index + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
                               </div>
-                              <Button variant="link" className="p-0 h-auto text-[#2c5d34]">
-                                View Details
-                              </Button>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
+                              <div className="p-3">
+                                <p className="font-medium">{analysis.plant_type || "Plant"}</p>
+                                <p className="text-sm text-gray-500">
+                                  Analyzed on {new Date(analysis.analyzed_at).toLocaleDateString()}
+                                </p>
+                                <div className="flex items-center mt-2">
+                                  <span className="text-sm font-medium mr-2">Diagnosis:</span>
+                                  <span className="text-sm text-red-600">{analysis.diagnosis}</span>
+                                </div>
+                                <Button variant="link" className="p-0 h-auto text-[#2c5d34]">
+                                  View Details
+                                </Button>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">No leaf analyses found</div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
