@@ -1,18 +1,36 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import { CalendarIcon, Plus, Check, Edit } from "lucide-react"
-import Navbar from "@/components/navbar"
-import { useToast } from "@/hooks/use-toast"
-import { calendarService } from "@/lib/calendar-service"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CalendarIcon, Plus, Check, Edit } from "lucide-react";
+import Navbar from "@/components/navbar";
+import { useToast } from "@/hooks/use-toast";
+import { calendarService } from "@/lib/calendar-service";
 import {
   Dialog,
   DialogContent,
@@ -20,121 +38,75 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Calendar } from "@/components/ui/calendar"
-import { format } from "date-fns"
+} from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 export default function CalendarPage() {
-  const { toast } = useToast()
-  const [date, setDate] = useState<Date | undefined>(new Date())
-  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
-  const [isCreateCalendarOpen, setIsCreateCalendarOpen] = useState(false)
-  const [tasks, setTasks] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast();
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [isCreateCalendarOpen, setIsCreateCalendarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
     priority: "medium",
-  })
+  });
   const [newCalendar, setNewCalendar] = useState({
     name: "",
     description: "",
     cropType: "",
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString().split('T')[0],
-  })
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: new Date(new Date().setMonth(new Date().getMonth() + 3))
+      .toISOString()
+      .split("T")[0],
+  });
 
-  // Handle adding a new task
   const handleAddTask = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true)
-      const result = await calendarService.addTask(newTask)
+      const result = await calendarService.addTask(newTask);
       if (result.success) {
-        setTasks([...tasks, result.task])
-        setIsAddTaskOpen(false)
-        setNewTask({
-          title: "",
-          description: "",
-          date: new Date().toISOString().split('T')[0],
-          priority: "medium",
-        })
-        toast({
-          title: "Success",
-          description: "Task added successfully",
-        })
+        setIsAddTaskOpen(false);
+        toast({ title: "Success", description: "Task added successfully" });
+        setNewTask({ title: "", description: "", date: new Date().toISOString().split("T")[0], priority: "medium" });
       }
-    } catch (error) {
-      console.error("Error adding task:", error)
-      toast({
-        title: "Error",
-        description: "Failed to add task",
-        variant: "destructive",
-      })
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to add task", variant: "destructive" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  // Handle creating a new calendar
   const handleCreateCalendar = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true)
-      const result = await calendarService.createCalendar(newCalendar)
+      const result = await calendarService.createCalendar(newCalendar);
       if (result.success) {
-        setIsCreateCalendarOpen(false)
+        setIsCreateCalendarOpen(false);
+        toast({ title: "Success", description: "Calendar created successfully" });
         setNewCalendar({
           name: "",
           description: "",
           cropType: "",
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString().split('T')[0],
-        })
-        toast({
-          title: "Success",
-          description: "Calendar created successfully",
-        })
+          startDate: new Date().toISOString().split("T")[0],
+          endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString().split("T")[0],
+        });
       }
-    } catch (error) {
-      console.error("Error creating calendar:", error)
-      toast({
-        title: "Error",
-        description: "Failed to create calendar",
-        variant: "destructive",
-      })
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to create calendar", variant: "destructive" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-
-  // Handle marking a task as complete
-  const handleCompleteTask = async (taskId: number) => {
-    try {
-      const success = await calendarService.completeTask(taskId)
-      if (success) {
-        setTasks(tasks.map(task => 
-          task.id === taskId 
-            ? { ...task, completed: true } 
-            : task
-        ))
-        toast({
-          title: "Success",
-          description: "Task marked as complete",
-        })
-      }
-    } catch (error) {
-      console.error("Error completing task:", error)
-      toast({
-        title: "Error",
-        description: "Failed to complete task",
-        variant: "destructive",
-      })
-    }
-  }
+  };
 
   return (
-
-      <main className="flex-1 p-4 md:p-6 lg:p-8">
+    <>
+      <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
+        <Navbar />
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
             <div>
@@ -767,77 +739,32 @@ export default function CalendarPage() {
             </TabsContent>
           </Tabs>
         </div>
-      </main>
+        </main>
+      </div>
 
       {/* Add Task Dialog */}
       <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Task</DialogTitle>
-            <DialogDescription>
-              Create a new task for your farm calendar.
-            </DialogDescription>
+            <DialogDescription>Create a new task for your farm calendar.</DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4 my-4">
             <div className="space-y-2">
               <Label htmlFor="task-title">Task Title</Label>
-              <Input 
-                id="task-title" 
-                value={newTask.title} 
-                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+              <Input
+                id="task-title"
+                value={newTask.title}
+                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                 placeholder="e.g., Plant Corn in North Field"
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="task-description">Description</Label>
-              <Textarea 
-                id="task-description" 
-                value={newTask.description} 
-                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                placeholder="Enter task details..."
-                rows={3}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="task-date">Date</Label>
-              <Input 
-                id="task-date" 
-                type="date" 
-                value={newTask.date} 
-                onChange={(e) => setNewTask({...newTask, date: e.target.value})}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="task-priority">Priority</Label>
-              <Select 
-                value={newTask.priority} 
-                onValueChange={(value) => setNewTask({...newTask, priority: value})}
-              >
-                <SelectTrigger id="task-priority">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddTaskOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              className="bg-[#2c5d34] hover:bg-[#1e3f24]"
-              onClick={handleAddTask}
-              disabled={!newTask.title || isLoading}
-            >
+            <Button onClick={handleAddTask} disabled={!newTask.title || isLoading}>
               {isLoading ? "Adding..." : "Add Task"}
             </Button>
           </DialogFooter>
@@ -849,86 +776,29 @@ export default function CalendarPage() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Custom Calendar</DialogTitle>
-            <DialogDescription>
-              Create a custom planting calendar for specific crops.
-            </DialogDescription>
+            <DialogDescription>Create a custom planting calendar for specific crops.</DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4 my-4">
             <div className="space-y-2">
               <Label htmlFor="calendar-name">Calendar Name</Label>
-              <Input 
-                id="calendar-name" 
-                value={newCalendar.name} 
-                onChange={(e) => setNewCalendar({...newCalendar, name: e.target.value})}
+              <Input
+                id="calendar-name"
+                value={newCalendar.name}
+                onChange={(e) => setNewCalendar({ ...newCalendar, name: e.target.value })}
                 placeholder="e.g., Summer Vegetables"
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="calendar-description">Description</Label>
-              <Textarea 
-                id="calendar-description" 
-                value={newCalendar.description} 
-                onChange={(e) => setNewCalendar({...newCalendar, description: e.target.value})}
-                placeholder="Enter calendar details..."
-                rows={3}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="crop-type">Crop Type</Label>
-              <Select 
-                value={newCalendar.cropType} 
-                onValueChange={(value) => setNewCalendar({...newCalendar, cropType: value})}
-              >
-                <SelectTrigger id="crop-type">
-                  <SelectValue placeholder="Select crop type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="corn">Corn</SelectItem>
-                  <SelectItem value="wheat">Wheat</SelectItem>
-                  <SelectItem value="soybeans">Soybeans</SelectItem>
-                  <SelectItem value="vegetables">Vegetables</SelectItem>
-                  <SelectItem value="fruits">Fruits</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="start-date">Start Date</Label>
-                <Input 
-                  id="start-date" 
-                  type="date" 
-                  value={newCalendar.startDate} 
-                  onChange={(e) => setNewCalendar({...newCalendar, startDate: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="end-date">End Date</Label>
-                <Input 
-                  id="end-date" 
-                  type="date" 
-                  value={newCalendar.endDate} 
-                  onChange={(e) => setNewCalendar({...newCalendar, endDate: e.target.value})}
-                />
-              </div>
-            </div>
           </div>
-          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateCalendarOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              className="bg-[#2c5d34] hover:bg-[#1e3f24]"
-              onClick={handleCreateCalendar}
-              disabled={!newCalendar.name || !newCalendar.cropType || isLoading}
-            >
+            <Button onClick={handleCreateCalendar} disabled={!newCalendar.name || isLoading}>
               {isLoading ? "Creating..." : "Create Calendar"}
             </Button>
           </DialogFooter>
         </DialogContent>
-      \
+      </Dialog>
+    </>
+  );
+}
