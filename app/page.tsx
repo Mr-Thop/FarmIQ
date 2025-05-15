@@ -8,7 +8,6 @@ import { motion } from "framer-motion"
 import { ArrowRight, Leaf, Sprout, Sun, CloudRain, Tractor, TreesIcon as Plant, Wheat } from "lucide-react"
 import Image from "next/image"
 import HomeSlideshow from "@/components/home-slideshow"
-import Navbar from "@/components/navbar"
 
 export default function Home() {
   const { user } = useAuth()
@@ -73,9 +72,7 @@ export default function Home() {
           className="absolute top-1/3 -right-20 h-80 w-80 rounded-full bg-blue-200"
         />
       </div>
-      <div className="flex flex-col bg-[#f8f9f5]">
-            <Navbar />
-      </div>
+
       {/* Hero Section */}
       <section className="relative py-20 md:py-32">
         <div className="container mx-auto px-4 text-center">
