@@ -133,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response) {
         setUser(response.user)
-        role = response.user.role?.toLowerCase();
+        const role = response.user.role?.toLowerCase();
         // Redirect based on role
         if (role === "farmer") {
           router.push("/dashboard")
