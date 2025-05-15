@@ -933,4 +933,6 @@ export default function CalendarPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      \
+      </div>
+      )
+      }
