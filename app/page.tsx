@@ -75,7 +75,7 @@ export default function Home() {
       </div>
 
       {/* Hero Section */}
-      <div className="min-h-screen flex flex-col bg-[#f8f9f5]">
+      <div className="flex flex-col bg-[#f8f9f5]">
             <Navbar />
       </div>
       <section className="relative py-20 md:py-32">
